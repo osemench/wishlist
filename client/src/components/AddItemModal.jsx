@@ -16,6 +16,10 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
   const [scrapeStatus, setScrapeStatus] = useState(null) // { type: 'success'|'error', message }
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // candidate_images from the scraper, used to show the image picker
+  const [candidateImages, setCandidateImages] = useState([])
+  // the external URL of the currently selected candidate image
+  const [selectedImageUrl, setSelectedImageUrl] = useState(null)
 
   const handleFormChange = (e) => {
     const { name, value } = e.target
@@ -27,6 +31,8 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
     setScraping(true)
     setScrapeStatus(null)
     setError(null)
+    setCandidateImages([])
+    setSelectedImageUrl(null)
 
     try {
       const res = await fetch('/api/scrape', {
@@ -38,11 +44,18 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
 
       if (data.error) throw new Error(data.error)
 
+      const candidates = data.candidate_images || []
+      setCandidateImages(candidates)
+
+      const bestImage = candidates.length > 0 ? candidates[0].url : (data.image_url || '')
+      setSelectedImageUrl(bestImage || null)
+
       setForm({
         name: data.name || '',
         description: data.description || '',
         price: data.price != null ? String(data.price) : '',
-        image_url: data.image_url || '',
+        // image_url is kept empty here; we track the selection separately
+        image_url: '',
         purchase_url: data.purchase_url || scrapeUrl.trim(),
       })
       setScrapeStatus({
@@ -67,6 +80,12 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
     setSubmitting(true)
     setError(null)
 
+    // Determine which image to use:
+    // selectedImageUrl = external URL chosen from the picker → send as image_source_url
+    // form.image_url   = manually typed URL               → send as image_url
+    const imageSourceUrl = selectedImageUrl || null
+    const manualImageUrl = !selectedImageUrl ? (form.image_url.trim() || null) : null
+
     try {
       const res = await fetch(`/api/wishlists/${wishlistId}/items`, {
         method: 'POST',
@@ -75,7 +94,8 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
           name: form.name.trim(),
           description: form.description.trim() || null,
           price: form.price !== '' ? parseFloat(form.price) : null,
-          image_url: form.image_url.trim() || null,
+          image_source_url: imageSourceUrl,
+          image_url: manualImageUrl,
           purchase_url: form.purchase_url.trim() || null,
         }),
       })
@@ -91,6 +111,9 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) onClose()
   }
+
+  // The preview shown in the manual form: prioritize picker selection over typed URL
+  const previewImageUrl = selectedImageUrl || form.image_url
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
@@ -229,36 +252,77 @@ export default function AddItemModal({ wishlistId, onClose, onItemAdded }) {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="item-image-url">
-                  Image URL <span>(optional)</span>
-                </label>
-                <input
-                  id="item-image-url"
-                  type="url"
-                  name="image_url"
-                  className="form-input"
-                  placeholder="https://..."
-                  value={form.image_url}
-                  onChange={handleFormChange}
-                />
-                {form.image_url && (
-                  <div style={{ marginTop: 10 }}>
-                    <img
-                      src={form.image_url}
-                      alt="Preview"
-                      style={{
-                        width: 80,
-                        height: 80,
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        border: '1px solid var(--border)',
-                      }}
-                      onError={e => { e.target.style.display = 'none' }}
-                    />
+              {/* Image picker — shown after a successful scrape with candidates */}
+              {candidateImages.length > 0 ? (
+                <div className="form-group">
+                  <label className="form-label">
+                    Image <span>(select one)</span>
+                  </label>
+                  <div className="image-picker">
+                    {candidateImages.map((img) => (
+                      <button
+                        key={img.url}
+                        type="button"
+                        className={`image-picker-thumb ${selectedImageUrl === img.url ? 'selected' : ''}`}
+                        onClick={() => setSelectedImageUrl(img.url)}
+                        title={img.url}
+                      >
+                        <img
+                          src={img.url}
+                          alt=""
+                          onError={e => { e.currentTarget.closest('.image-picker-thumb').style.display = 'none' }}
+                        />
+                        {selectedImageUrl === img.url && (
+                          <span className="image-picker-check">✓</span>
+                        )}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={`image-picker-thumb image-picker-none ${selectedImageUrl === null ? 'selected' : ''}`}
+                      onClick={() => setSelectedImageUrl(null)}
+                      title="No image"
+                    >
+                      <span>None</span>
+                    </button>
                   </div>
-                )}
-              </div>
+                  {previewImageUrl && (
+                    <div style={{ marginTop: 10 }}>
+                      <img
+                        src={previewImageUrl}
+                        alt="Selected"
+                        style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+                        onError={e => { e.target.style.display = 'none' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="item-image-url">
+                    Image URL <span>(optional)</span>
+                  </label>
+                  <input
+                    id="item-image-url"
+                    type="url"
+                    name="image_url"
+                    className="form-input"
+                    placeholder="https://..."
+                    value={form.image_url}
+                    onChange={handleFormChange}
+                  />
+                  {form.image_url && (
+                    <div style={{ marginTop: 10 }}>
+                      <img
+                        src={form.image_url}
+                        alt="Preview"
+                        style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }}
+                        onError={e => { e.target.style.display = 'none' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </form>
           )}
         </div>

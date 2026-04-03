@@ -41,6 +41,10 @@ db.exec(`
   );
 `);
 
+// Migrate: add image columns if they don't exist yet (safe on existing databases)
+try { db.exec('ALTER TABLE items ADD COLUMN image_data BLOB'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE items ADD COLUMN image_mime TEXT'); } catch { /* already exists */ }
+
 // Seed data only if users table is empty
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 
