@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import WishlistSidebar from './components/WishlistSidebar.jsx'
 import WishlistView from './components/WishlistView.jsx'
+import ShareView from './components/ShareView.jsx'
 
 export default function App() {
   const [users, setUsers] = useState([])
@@ -94,66 +96,71 @@ export default function App() {
   const currentWishlistName = wishlists.find(w => w.id === selectedWishlistId)?.name
 
   return (
-    <div className="app-layout">
-      {sidebarOpen && (
-        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
-      )}
+    <Routes>
+      <Route path="/share/:token" element={<ShareView />} />
+      <Route path="*" element={
+        <div className="app-layout">
+          {sidebarOpen && (
+            <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+          )}
 
-      <WishlistSidebar
-        users={users}
-        selectedUserId={selectedUserId}
-        onSelectUser={setSelectedUserId}
-        wishlists={wishlists}
-        selectedWishlistId={selectedWishlistId}
-        onSelectWishlist={handleSelectWishlist}
-        loadingWishlists={loadingWishlists}
-        onWishlistCreated={handleWishlistCreated}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      <main className="main-content">
-        <div className="mobile-nav">
-          <button
-            className="mobile-nav-hamburger"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-          >
-            <span /><span /><span />
-          </button>
-          <span className="mobile-nav-title">
-            {currentWishlistName || '🎁 Wishlist App'}
-          </span>
-        </div>
-
-        {error && (
-          <div className="error-banner" style={{ margin: '16px 36px 0' }}>
-            {error}
-            <button
-              onClick={() => setError(null)}
-              style={{ marginLeft: 10, cursor: 'pointer', background: 'none', border: 'none', color: 'inherit', fontWeight: 600 }}
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {!selectedWishlistId ? (
-          <div className="no-wishlist-selected">
-            <div className="no-wishlist-selected-icon">🎁</div>
-            <h2>No wishlist selected</h2>
-            <p>Select a wishlist from the sidebar, or create a new one to get started.</p>
-          </div>
-        ) : (
-          <WishlistView
-            wishlist={selectedWishlist}
-            loading={loadingWishlist}
-            wishlistId={selectedWishlistId}
-            onItemAdded={handleItemAdded}
-            onItemDeleted={handleItemDeleted}
+          <WishlistSidebar
+            users={users}
+            selectedUserId={selectedUserId}
+            onSelectUser={setSelectedUserId}
+            wishlists={wishlists}
+            selectedWishlistId={selectedWishlistId}
+            onSelectWishlist={handleSelectWishlist}
+            loadingWishlists={loadingWishlists}
+            onWishlistCreated={handleWishlistCreated}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
           />
-        )}
-      </main>
-    </div>
+
+          <main className="main-content">
+            <div className="mobile-nav">
+              <button
+                className="mobile-nav-hamburger"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+              >
+                <span /><span /><span />
+              </button>
+              <span className="mobile-nav-title">
+                {currentWishlistName || '🎁 Wishlist App'}
+              </span>
+            </div>
+
+            {error && (
+              <div className="error-banner" style={{ margin: '16px 36px 0' }}>
+                {error}
+                <button
+                  onClick={() => setError(null)}
+                  style={{ marginLeft: 10, cursor: 'pointer', background: 'none', border: 'none', color: 'inherit', fontWeight: 600 }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            {!selectedWishlistId ? (
+              <div className="no-wishlist-selected">
+                <div className="no-wishlist-selected-icon">🎁</div>
+                <h2>No wishlist selected</h2>
+                <p>Select a wishlist from the sidebar, or create a new one to get started.</p>
+              </div>
+            ) : (
+              <WishlistView
+                wishlist={selectedWishlist}
+                loading={loadingWishlist}
+                wishlistId={selectedWishlistId}
+                onItemAdded={handleItemAdded}
+                onItemDeleted={handleItemDeleted}
+              />
+            )}
+          </main>
+        </div>
+      } />
+    </Routes>
   )
 }

@@ -45,6 +45,22 @@ db.exec(`
 try { db.exec('ALTER TABLE items ADD COLUMN image_data BLOB'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE items ADD COLUMN image_mime TEXT'); } catch { /* already exists */ }
 
+// Migrate: share token on wishlists
+try { db.exec('ALTER TABLE wishlists ADD COLUMN share_token TEXT'); } catch { /* already exists */ }
+
+// Purchases table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL,
+    user_id INTEGER,
+    anon_name TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  )
+`);
+
 // Seed data only if users table is empty
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 

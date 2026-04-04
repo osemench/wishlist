@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function ItemCard({ item, onDelete }) {
+export default function ItemCard({ item, onDelete, purchasers }) {
   const [deleting, setDeleting] = useState(false)
   const [imgError, setImgError] = useState(false)
 
@@ -20,15 +20,13 @@ export default function ItemCard({ item, onDelete }) {
 
   const formatPrice = (price) => {
     if (price == null) return null
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(price)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(price)
   }
 
+  const isPurchased = !!item.is_purchased
+
   return (
-    <div className="item-card">
+    <div className={`item-card${isPurchased ? ' item-card--purchased' : ''}`}>
       <div className="item-card-image-wrapper">
         {item.image_url && !imgError ? (
           <img
@@ -41,6 +39,8 @@ export default function ItemCard({ item, onDelete }) {
         ) : (
           <div className="item-card-image-placeholder">🎁</div>
         )}
+
+        {isPurchased && <div className="item-card-purchased-badge">Purchased</div>}
 
         <button
           className="item-card-delete"
@@ -57,6 +57,12 @@ export default function ItemCard({ item, onDelete }) {
         <div className="item-card-name">{item.name}</div>
         {item.description && (
           <div className="item-card-description">{item.description}</div>
+        )}
+
+        {purchasers && purchasers.length > 0 && (
+          <div className="item-card-purchasers">
+            Bought by: {purchasers.join(', ')}
+          </div>
         )}
 
         <div className="item-card-footer">
