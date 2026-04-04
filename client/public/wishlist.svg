@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="16" fill="#4361ee"/>
+  <!-- Gift box body -->
+  <rect x="8" y="16" width="16" height="10" rx="1.5" fill="#ffffff"/>
+  <!-- Gift box lid -->
+  <rect x="7" y="13" width="18" height="4" rx="1.5" fill="#eef0fd"/>
+  <!-- Ribbon vertical -->
+  <rect x="14.5" y="13" width="3" height="13" fill="#4361ee"/>
+  <!-- Ribbon bow left -->
+  <path d="M15.5 14 C13 11 9 12 10 14 C11 16 14 15 15.5 14Z" fill="#eef0fd"/>
+  <!-- Ribbon bow right -->
+  <path d="M16.5 14 C19 11 23 12 22 14 C21 16 18 15 16.5 14Z" fill="#eef0fd"/>
+</svg>
