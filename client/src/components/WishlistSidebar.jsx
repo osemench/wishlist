@@ -2,6 +2,9 @@ import { useState } from 'react'
 import NewWishlistModal from './NewWishlistModal.jsx'
 
 export default function WishlistSidebar({
+  testMode,
+  authUser,
+  onLogout,
   users,
   selectedUserId,
   onSelectUser,
@@ -29,16 +32,28 @@ export default function WishlistSidebar({
           <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">×</button>
         </div>
 
-        <div className="user-selector-label">Account</div>
-        <select
-          className="user-select"
-          value={selectedUserId || ''}
-          onChange={e => onSelectUser(Number(e.target.value))}
-        >
-          {users.map(u => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
+        {testMode ? (
+          // Test mode: show the user selector dropdown
+          <>
+            <div className="user-selector-label">Account</div>
+            <select
+              className="user-select"
+              value={selectedUserId || ''}
+              onChange={e => onSelectUser(Number(e.target.value))}
+            >
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </>
+        ) : (
+          // Auth mode: show logged-in user with logout button
+          <div className="sidebar-auth-user">
+            <div className="sidebar-auth-name">👤 {authUser?.name}</div>
+            <div className="sidebar-auth-email">{authUser?.email}</div>
+            <button className="sidebar-logout-btn" onClick={onLogout}>Sign out</button>
+          </div>
+        )}
       </div>
 
       <div className="sidebar-body">

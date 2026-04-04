@@ -3,12 +3,18 @@ import cors from 'cors';
 import { randomBytes } from 'crypto';
 import axios from 'axios';
 import sharp from 'sharp';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import db from './db.js';
 import { scrapeUrl } from './scraper.js';
 
 const app = express();
 const PORT = 3001;
 const MAX_IMAGE_DIMENSION = 600;
+
+// Test mode: on by default. Set TEST_MODE=false in env to enable real auth.
+const TEST_MODE = process.env.TEST_MODE !== 'false';
+const JWT_SECRET = process.env.JWT_SECRET || 'wishlist-dev-secret-change-in-production';
 
 // Item columns returned in JSON — excludes the binary image_data blob
 const ITEM_COLS = 'i.id, i.wishlist_id, i.name, i.description, i.price, i.image_url, i.purchase_url, i.created_at';
@@ -32,11 +38,88 @@ async function downloadImage(imageUrl) {
     .toBuffer();
 }
 
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+app.get('/api/config', (_req, res) => {
+  res.json({ testMode: TEST_MODE });
+});
+
+// ─── Auth (non-test-mode only) ────────────────────────────────────────────────
+
+// POST /api/auth/register
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail)) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = db.prepare(
+      'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)'
+    ).run(name.trim(), normalizedEmail, passwordHash);
+
+    const user = { id: result.lastInsertRowid, name: name.trim(), email: normalizedEmail };
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    res.status(201).json({ token, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email?.trim() || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.trim().toLowerCase());
+    if (!user?.password_hash) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (!await bcrypt.compare(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/auth/me — verify a stored token and return the user
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
+
+    const { userId } = jwt.verify(header.slice(7), JWT_SECRET);
+    const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId);
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    res.json({ user });
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+});
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 
+// Exclude password_hash from all user list responses
 app.get('/api/users', (_req, res) => {
   try {
-    res.json(db.prepare('SELECT * FROM users ORDER BY name').all());
+    res.json(db.prepare('SELECT id, name, email FROM users ORDER BY name').all());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

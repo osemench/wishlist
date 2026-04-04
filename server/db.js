@@ -45,6 +45,9 @@ db.exec(`
 try { db.exec('ALTER TABLE items ADD COLUMN image_data BLOB'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE items ADD COLUMN image_mime TEXT'); } catch { /* already exists */ }
 
+// Migrate: password_hash on users (for non-test-mode auth)
+try { db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT'); } catch { /* already exists */ }
+
 // Migrate: share token on wishlists
 try { db.exec('ALTER TABLE wishlists ADD COLUMN share_token TEXT'); } catch { /* already exists */ }
 
