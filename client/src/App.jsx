@@ -11,8 +11,8 @@ export default function App() {
   const [loadingWishlists, setLoadingWishlists] = useState(false)
   const [loadingWishlist, setLoadingWishlist] = useState(false)
   const [error, setError] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Fetch all users on mount
   useEffect(() => {
     fetch('/api/users')
       .then(r => r.json())
@@ -24,7 +24,6 @@ export default function App() {
       .catch(err => setError(err.message))
   }, [])
 
-  // Fetch wishlists when selected user changes
   useEffect(() => {
     if (!selectedUserId) return
     setLoadingWishlists(true)
@@ -42,7 +41,6 @@ export default function App() {
       .finally(() => setLoadingWishlists(false))
   }, [selectedUserId])
 
-  // Fetch selected wishlist with items when selection changes
   useEffect(() => {
     if (!selectedWishlistId) return
     setLoadingWishlist(true)
@@ -58,9 +56,13 @@ export default function App() {
   }, [selectedWishlistId])
 
   const handleWishlistCreated = (newWishlist) => {
-    // Refresh wishlists list and select the new one
     setWishlists(prev => [{ ...newWishlist, item_count: 0 }, ...prev])
     setSelectedWishlistId(newWishlist.id)
+  }
+
+  const handleSelectWishlist = (id) => {
+    setSelectedWishlistId(id)
+    setSidebarOpen(false)
   }
 
   const handleItemAdded = (newItem) => {
@@ -68,7 +70,6 @@ export default function App() {
       ...prev,
       items: [newItem, ...(prev.items || [])],
     }))
-    // Update item count in wishlists sidebar
     setWishlists(prev =>
       prev.map(w => w.id === selectedWishlistId
         ? { ...w, item_count: (w.item_count || 0) + 1 }
@@ -82,7 +83,6 @@ export default function App() {
       ...prev,
       items: prev.items.filter(i => i.id !== itemId),
     }))
-    // Update item count in sidebar
     setWishlists(prev =>
       prev.map(w => w.id === selectedWishlistId
         ? { ...w, item_count: Math.max(0, (w.item_count || 1) - 1) }
@@ -91,19 +91,41 @@ export default function App() {
     )
   }
 
+  const currentWishlistName = wishlists.find(w => w.id === selectedWishlistId)?.name
+
   return (
     <div className="app-layout">
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+      )}
+
       <WishlistSidebar
         users={users}
         selectedUserId={selectedUserId}
         onSelectUser={setSelectedUserId}
         wishlists={wishlists}
         selectedWishlistId={selectedWishlistId}
-        onSelectWishlist={setSelectedWishlistId}
+        onSelectWishlist={handleSelectWishlist}
         loadingWishlists={loadingWishlists}
         onWishlistCreated={handleWishlistCreated}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
+
       <main className="main-content">
+        <div className="mobile-nav">
+          <button
+            className="mobile-nav-hamburger"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <span /><span /><span />
+          </button>
+          <span className="mobile-nav-title">
+            {currentWishlistName || '🎁 Wishlist App'}
+          </span>
+        </div>
+
         {error && (
           <div className="error-banner" style={{ margin: '16px 36px 0' }}>
             {error}
@@ -115,6 +137,7 @@ export default function App() {
             </button>
           </div>
         )}
+
         {!selectedWishlistId ? (
           <div className="no-wishlist-selected">
             <div className="no-wishlist-selected-icon">🎁</div>

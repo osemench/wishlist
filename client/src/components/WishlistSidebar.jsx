@@ -10,6 +10,8 @@ export default function WishlistSidebar({
   onSelectWishlist,
   loadingWishlists,
   onWishlistCreated,
+  isOpen,
+  onClose,
 }) {
   const [showNewWishlistModal, setShowNewWishlistModal] = useState(false)
 
@@ -19,11 +21,12 @@ export default function WishlistSidebar({
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <span className="sidebar-logo-icon">🎁</span>
           <h1>Wishlist App</h1>
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">×</button>
         </div>
 
         <div className="user-selector-label">Account</div>
