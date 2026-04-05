@@ -51,6 +51,9 @@ try { db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT'); } catch { /* a
 try { db.exec('ALTER TABLE users ADD COLUMN oauth_provider TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE users ADD COLUMN oauth_id TEXT'); } catch { /* already exists */ }
 
+// Migrate: emoji on wishlists
+try { db.exec('ALTER TABLE wishlists ADD COLUMN emoji TEXT'); } catch { /* already exists */ }
+
 // Migrate: share token on wishlists
 try { db.exec('ALTER TABLE wishlists ADD COLUMN share_token TEXT'); } catch { /* already exists */ }
 

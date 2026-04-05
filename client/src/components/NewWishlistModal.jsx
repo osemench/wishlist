@@ -1,8 +1,18 @@
 import { useState } from 'react'
 
+const PRESET_EMOJIS = [
+  '🎁','🎂','🎉','🏠','✈️','📚','💻','🎮',
+  '👗','💄','🏋️','🍕','🌱','🎵','💍','🧸',
+  '🎨','📷','🐶','❤️','⭐','🛒','🎓','🏖️',
+  '🎄','🧳','🪴','🎸','🏕️','💎',
+]
+
+const DEFAULT_EMOJI = '📋'
+
 export default function NewWishlistModal({ userId, onClose, onCreated }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [emoji, setEmoji] = useState(DEFAULT_EMOJI)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -23,6 +33,7 @@ export default function NewWishlistModal({ userId, onClose, onCreated }) {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || null,
+          emoji,
         }),
       })
       const data = await res.json()
@@ -51,19 +62,39 @@ export default function NewWishlistModal({ userId, onClose, onCreated }) {
 
           <form onSubmit={handleSubmit} id="new-wishlist-form">
             <div className="form-group">
+              <label className="form-label">Icon</label>
+              <div className="emoji-picker">
+                {PRESET_EMOJIS.map(e => (
+                  <button
+                    key={e}
+                    type="button"
+                    className={`emoji-picker-btn${emoji === e ? ' selected' : ''}`}
+                    onClick={() => setEmoji(e)}
+                    aria-label={e}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
               <label className="form-label" htmlFor="wl-name">
                 Name <span>(required)</span>
               </label>
-              <input
-                id="wl-name"
-                type="text"
-                className="form-input"
-                placeholder="e.g. Birthday Wishlist"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                autoFocus
-                required
-              />
+              <div className="wl-name-row">
+                <span className="wl-name-emoji-preview">{emoji}</span>
+                <input
+                  id="wl-name"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Birthday Wishlist"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
             </div>
 
             <div className="form-group">

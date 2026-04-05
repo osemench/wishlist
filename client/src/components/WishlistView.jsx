@@ -69,7 +69,10 @@ export default function WishlistView({ wishlist, loading, wishlistId, onItemAdde
     <div className="wishlist-view">
       <div className="wishlist-view-header">
         <div className="wishlist-view-title-area">
-          <h2 className="wishlist-view-title">{wishlist.name}</h2>
+          <h2 className="wishlist-view-title">
+            {wishlist.emoji && <span className="wishlist-view-emoji">{wishlist.emoji}</span>}
+            {wishlist.name}
+          </h2>
           {wishlist.description && (
             <p className="wishlist-view-description">{wishlist.description}</p>
           )}

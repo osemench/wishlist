@@ -254,9 +254,10 @@ app.post('/api/users/:userId/wishlists', (req, res) => {
     if (!db.prepare('SELECT id FROM users WHERE id = ?').get(userId)) {
       return res.status(404).json({ error: 'User not found' });
     }
+    const { emoji } = req.body;
     const result = db.prepare(
-      `INSERT INTO wishlists (user_id, name, description, created_at) VALUES (?, ?, ?, datetime('now'))`
-    ).run(userId, name.trim(), description?.trim() || null);
+      `INSERT INTO wishlists (user_id, name, description, emoji, created_at) VALUES (?, ?, ?, ?, datetime('now'))`
+    ).run(userId, name.trim(), description?.trim() || null, emoji?.trim() || null);
     res.status(201).json(db.prepare('SELECT * FROM wishlists WHERE id = ?').get(result.lastInsertRowid));
   } catch (err) {
     res.status(500).json({ error: err.message });

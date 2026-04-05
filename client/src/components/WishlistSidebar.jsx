@@ -82,7 +82,7 @@ export default function WishlistSidebar({
                   className={`wishlist-item ${wl.id === selectedWishlistId ? 'active' : ''}`}
                   onClick={() => onSelectWishlist(wl.id)}
                 >
-                  <span className="wishlist-item-icon">📋</span>
+                  <span className="wishlist-item-icon">{wl.emoji || '📋'}</span>
                   <div className="wishlist-item-info">
                     <div className="wishlist-item-name">{wl.name}</div>
                     <div className="wishlist-item-count">
