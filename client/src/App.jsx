@@ -27,6 +27,11 @@ function authHeaders() {
 export default function App() {
   // null = not yet loaded, true/false = loaded
   const [testMode, setTestMode] = useState(null)
+  const [providers, setProviders] = useState({})
+  const [oauthError, setOauthError] = useState(() => {
+    const p = new URLSearchParams(window.location.search)
+    return p.get('auth_error') || null
+  })
   // auth-mode identity (non-test only)
   const [authUser, setAuthUser] = useState(null)
   // test-mode user list + selector
@@ -43,10 +48,20 @@ export default function App() {
 
   // 1. Load config to decide whether auth is needed
   useEffect(() => {
+    // Consume any token/error dropped into the URL by an OAuth callback
+    const params = new URLSearchParams(window.location.search)
+    const urlToken = params.get('auth_token')
+    const urlError = params.get('auth_error')
+    if (urlToken || urlError) {
+      if (urlToken) storeToken(urlToken)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+
     fetch('/api/config')
       .then(r => r.json())
       .then(data => {
         setTestMode(data.testMode)
+        setProviders(data.providers || {})
         if (data.testMode) {
           // Test mode: discard any stale auth token and load all users for the dropdown
           clearToken()
@@ -179,7 +194,7 @@ export default function App() {
     <Routes>
       <Route path="/share/:token" element={<ShareView />} />
       <Route path="*" element={
-        needsAuth ? <AuthPage onAuth={handleAuth} /> : (
+        needsAuth ? <AuthPage onAuth={handleAuth} providers={providers} oauthError={oauthError} onClearOauthError={() => setOauthError(null)} /> : (
           <div className="app-layout">
             {sidebarOpen && (
               <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />

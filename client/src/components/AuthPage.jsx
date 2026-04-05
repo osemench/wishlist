@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function AuthPage({ onAuth }) {
+export default function AuthPage({ onAuth, providers = {}, oauthError, onClearOauthError }) {
   const [tab, setTab] = useState('login')
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -43,6 +43,8 @@ export default function AuthPage({ onAuth }) {
     }
   }
 
+  const displayError = error || oauthError
+
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -51,11 +53,33 @@ export default function AuthPage({ onAuth }) {
           <h1>Wishlist App</h1>
         </div>
 
+        {displayError && (
+          <div className="error-banner" style={{ marginBottom: 20 }}>
+            {displayError}
+            <button onClick={() => { setError(null); onClearOauthError?.() }}
+              style={{ marginLeft: 10, cursor: 'pointer', background: 'none', border: 'none', color: 'inherit', fontWeight: 600 }}>
+              ×
+            </button>
+          </div>
+        )}
+
+        {providers.microsoft && (
+          <>
+            <a className="btn-microsoft" href="/api/auth/microsoft">
+              <MicrosoftLogo />
+              Sign in with Microsoft
+            </a>
+            <div className="auth-divider"><span>or</span></div>
+          </>
+        )}
+
         <div className="tabs" style={{ marginBottom: 24 }}>
-          <button className={`tab-btn ${tab === 'login' ? 'active' : ''}`} type="button" onClick={() => { setTab('login'); setError(null) }}>
+          <button className={`tab-btn ${tab === 'login' ? 'active' : ''}`} type="button"
+            onClick={() => { setTab('login'); setError(null) }}>
             Sign in
           </button>
-          <button className={`tab-btn ${tab === 'register' ? 'active' : ''}`} type="button" onClick={() => { setTab('register'); setError(null) }}>
+          <button className={`tab-btn ${tab === 'register' ? 'active' : ''}`} type="button"
+            onClick={() => { setTab('register'); setError(null) }}>
             Create account
           </button>
         </div>
@@ -102,5 +126,16 @@ export default function AuthPage({ onAuth }) {
         </form>
       </div>
     </div>
+  )
+}
+
+function MicrosoftLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1"  y="1"  width="9" height="9" fill="#f25022"/>
+      <rect x="11" y="1"  width="9" height="9" fill="#7fba00"/>
+      <rect x="1"  y="11" width="9" height="9" fill="#00a4ef"/>
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+    </svg>
   )
 }

@@ -16,6 +16,15 @@ const MAX_IMAGE_DIMENSION = 600;
 const TEST_MODE = process.env.TEST_MODE !== 'false';
 const JWT_SECRET = process.env.JWT_SECRET || 'wishlist-dev-secret-change-in-production';
 
+// Microsoft OAuth — set these env vars to enable the "Sign in with Microsoft" button
+const MS_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID || '';
+const MS_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET || '';
+const MS_REDIRECT_URI = process.env.MICROSOFT_REDIRECT_URI || 'http://localhost:3001/api/auth/microsoft/callback';
+const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:5173';
+
+// Short-lived CSRF state tokens for OAuth flows: state → expiry ms
+const oauthStates = new Map();
+
 // Item columns returned in JSON — excludes the binary image_data blob
 const ITEM_COLS = 'i.id, i.wishlist_id, i.name, i.description, i.price, i.image_url, i.purchase_url, i.created_at';
 
@@ -41,7 +50,10 @@ async function downloadImage(imageUrl) {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 app.get('/api/config', (_req, res) => {
-  res.json({ testMode: TEST_MODE });
+  res.json({
+    testMode: TEST_MODE,
+    providers: { microsoft: !!MS_CLIENT_ID },
+  });
 });
 
 // ─── Auth (non-test-mode only) ────────────────────────────────────────────────
@@ -111,6 +123,93 @@ app.get('/api/auth/me', (req, res) => {
     res.json({ user });
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
+  }
+});
+
+// ─── Microsoft OAuth ──────────────────────────────────────────────────────────
+
+const MS_AUTH_URL  = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
+const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+const MS_GRAPH_URL = 'https://graph.microsoft.com/v1.0/me';
+
+// GET /api/auth/microsoft — redirect the browser to Microsoft's consent screen
+app.get('/api/auth/microsoft', (_req, res) => {
+  if (!MS_CLIENT_ID) return res.status(503).json({ error: 'Microsoft auth is not configured' });
+
+  const state = randomBytes(16).toString('hex');
+  oauthStates.set(state, Date.now() + 10 * 60 * 1000); // valid for 10 min
+
+  const params = new URLSearchParams({
+    client_id: MS_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: MS_REDIRECT_URI,
+    response_mode: 'query',
+    scope: 'openid profile email User.Read',
+    state,
+  });
+  res.redirect(`${MS_AUTH_URL}?${params}`);
+});
+
+// GET /api/auth/microsoft/callback — Microsoft redirects here with ?code=…
+app.get('/api/auth/microsoft/callback', async (req, res) => {
+  const { code, state, error: msError } = req.query;
+  const fail = (msg) => res.redirect(`${APP_BASE_URL}?auth_error=${encodeURIComponent(msg)}`);
+
+  if (msError) return fail(msError);
+
+  // Validate CSRF state
+  const expiry = oauthStates.get(state);
+  oauthStates.delete(state);
+  if (!expiry || Date.now() > expiry) return fail('Invalid or expired OAuth state — please try again');
+
+  try {
+    // Exchange authorisation code for an access token
+    const tokenRes = await axios.post(MS_TOKEN_URL,
+      new URLSearchParams({
+        client_id: MS_CLIENT_ID,
+        client_secret: MS_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: MS_REDIRECT_URI,
+        scope: 'openid profile email User.Read',
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    // Fetch the user's profile from Microsoft Graph
+    const profile = (await axios.get(MS_GRAPH_URL, {
+      headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
+    })).data;
+
+    const msId    = profile.id;
+    const msEmail = (profile.mail || profile.userPrincipalName || '').toLowerCase();
+    const msName  = profile.displayName || msEmail;
+
+    // Find existing user by OAuth id, or link to a matching email, or create new
+    let user = db.prepare(
+      'SELECT id, name, email FROM users WHERE oauth_provider = ? AND oauth_id = ?'
+    ).get('microsoft', msId);
+
+    if (!user && msEmail) {
+      const byEmail = db.prepare('SELECT id, name, email FROM users WHERE email = ?').get(msEmail);
+      if (byEmail) {
+        db.prepare('UPDATE users SET oauth_provider = ?, oauth_id = ? WHERE id = ?')
+          .run('microsoft', msId, byEmail.id);
+        user = byEmail;
+      }
+    }
+
+    if (!user) {
+      const result = db.prepare(
+        'INSERT INTO users (name, email, oauth_provider, oauth_id) VALUES (?, ?, ?, ?)'
+      ).run(msName, msEmail, 'microsoft', msId);
+      user = { id: result.lastInsertRowid, name: msName, email: msEmail };
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    res.redirect(`${APP_BASE_URL}?auth_token=${encodeURIComponent(token)}`);
+  } catch (err) {
+    fail(err.response?.data?.error_description || err.message);
   }
 });
 
