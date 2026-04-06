@@ -224,6 +224,43 @@ describe('purchases', () => {
   });
 });
 
+// ─── Scraper endpoint ─────────────────────────────────────────────────────────
+
+describe('POST /api/scrape', () => {
+  test('returns 400 when url is missing', async () => {
+    const res = await request(app).post('/api/scrape').send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/url is required/i);
+  });
+
+  test('returns 400 for invalid URL format', async () => {
+    const res = await request(app).post('/api/scrape').send({ url: 'not-a-url' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid url/i);
+  });
+
+  test('returns 400 for non-http protocol', async () => {
+    const res = await request(app).post('/api/scrape').send({ url: 'ftp://example.com' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/http/i);
+  });
+});
+
+// ─── Item image endpoint ──────────────────────────────────────────────────────
+
+describe('GET /api/items/:id/image', () => {
+  test('returns 404 for item without an image', async () => {
+    // Seeded items have no image_data blob
+    const res = await request(app).get('/api/items/1/image');
+    expect(res.status).toBe(404);
+  });
+
+  test('returns 404 for non-existent item', async () => {
+    const res = await request(app).get('/api/items/999999/image');
+    expect(res.status).toBe(404);
+  });
+});
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 describe('auth', () => {
