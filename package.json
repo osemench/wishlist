@@ -5,6 +5,7 @@
     "install:all": "cd server && npm install && cd ../client && npm install",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
-    "dev": "start \"Wishlist Server\" cmd /k \"cd server && npm run dev\" && start \"Wishlist Client\" cmd /k \"cd client && npm run dev\""
+    "dev": "start \"Wishlist Server\" cmd /k \"cd server && npm run dev\" && start \"Wishlist Client\" cmd /k \"cd client && npm run dev\"",
+    "test": "cd server && npm test && cd ../client && npm test"
   }
 }

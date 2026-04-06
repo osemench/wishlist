@@ -5,7 +5,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const db = new Database(join(__dirname, 'wishlist.db'));
+const db = new Database(process.env.TEST_DB || join(__dirname, 'wishlist.db'));
 
 // Enable WAL mode for better performance
 db.pragma('journal_mode = WAL');

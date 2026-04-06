@@ -526,4 +526,8 @@ app.post('/api/scrape', async (req, res) => {
 
 // ─── Start server ─────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => console.log(`Wishlist server running on http://localhost:${PORT}`));
+export { app };
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => console.log(`Wishlist server running on http://localhost:${PORT}`));
+}

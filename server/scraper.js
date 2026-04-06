@@ -129,22 +129,25 @@ export async function scrapeUrl(url) {
   }
 
   const $ = cheerio.load(response.data);
+  return { ...parsePageData($, url), purchase_url: url };
+}
 
-  // Extract name
+/**
+ * Extracts structured product data from an already-loaded cheerio document.
+ * Exported for unit testing without needing an HTTP request.
+ */
+export function parsePageData($, url) {
   const ogTitle = $('meta[property="og:title"]').attr('content');
   const titleTag = $('title').text().trim();
   const name = (ogTitle || titleTag || '').trim();
 
-  // Extract description
   const ogDescription = $('meta[property="og:description"]').attr('content');
   const metaDescription = $('meta[name="description"]').attr('content');
   const description = (ogDescription || metaDescription || '').trim();
 
-  // Collect candidate images
   const candidate_images = collectCandidateImages($, url);
   const image_url = candidate_images.length > 0 ? candidate_images[0].url : '';
 
-  // Extract price
   let price = null;
 
   const ogPrice = $('meta[property="og:price:amount"]').attr('content') ||
@@ -167,23 +170,13 @@ export async function scrapeUrl(url) {
     const priceRegex = /\$[\d,]+\.?\d*/g;
     const bodyText = $('body').text();
     const matches = bodyText.match(priceRegex);
-    if (matches && matches.length > 0) {
+    if (matches) {
       for (const match of matches) {
         const parsed = parseFloat(match.replace(/[$,]/g, ''));
-        if (!isNaN(parsed) && parsed > 0 && parsed < 100000) {
-          price = parsed;
-          break;
-        }
+        if (!isNaN(parsed) && parsed > 0 && parsed < 100000) { price = parsed; break; }
       }
     }
   }
 
-  return {
-    name,
-    description,
-    price,
-    image_url,
-    candidate_images,
-    purchase_url: url,
-  };
+  return { name, description, price, image_url, candidate_images };
 }
